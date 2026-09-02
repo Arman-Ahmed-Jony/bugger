@@ -1,0 +1,13 @@
+{
+  "name": "bugger",
+  "private": true,
+  "scripts": {
+    "dev:extension": "pnpm --filter @bugger/extension dev",
+    "dev:app": "pnpm --filter @bugger/app dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

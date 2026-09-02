@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bugger</title>
+    <link rel="stylesheet" href="./popup.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <h1>Bugger</h1>
+        <p class="subtitle">Session recorder</p>
+      </header>
+
+      <div id="status" class="status idle">Idle</div>
+      <div id="meta" class="meta hidden"></div>
+
+      <div class="stats">
+        <div class="stat">
+          <span class="label">Duration</span>
+          <span id="duration" class="value">0:00.000</span>
+        </div>
+        <div class="stat">
+          <span class="label">Network</span>
+          <span id="network-count" class="value">0</span>
+        </div>
+        <div class="stat">
+          <span class="label">Console</span>
+          <span id="console-count" class="value">0</span>
+        </div>
+      </div>
+
+      <div id="error" class="error hidden"></div>
+
+      <div class="actions">
+        <button id="record-btn" class="primary">Record Tab</button>
+        <button id="stop-btn" class="danger hidden">Stop</button>
+        <button id="export-btn" class="secondary hidden">Export .bugger</button>
+        <button id="clear-btn" class="ghost hidden">Clear</button>
+      </div>
+    </div>
+    <script type="module" src="./popup.ts"></script>
+  </body>
+</html>

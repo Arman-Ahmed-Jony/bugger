@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Bugger",
+  "version": "0.1.0",
+  "description": "Record tab video, network calls, and console logs with synchronized timestamps.",
+  "permissions": ["debugger", "tabCapture", "activeTab", "storage", "offscreen", "downloads"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "src/background/index.ts",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "src/popup/index.html",
+    "default_title": "Bugger",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

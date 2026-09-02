@@ -1,0 +1,17 @@
+import { crx } from "@crxjs/vite-plugin";
+import { defineConfig } from "vite";
+import manifest from "./manifest.json";
+
+export default defineConfig({
+  plugins: [crx({ manifest })],
+  build: {
+    outDir: "dist",
+    emptyOutDir: true,
+    modulePreload: false,
+    rollupOptions: {
+      input: {
+        offscreen: "src/offscreen/offscreen.html",
+      },
+    },
+  },
+});
