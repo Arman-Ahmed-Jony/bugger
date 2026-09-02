@@ -18,6 +18,7 @@ export default function App() {
   const playback = useSyncedPlayback({
     network: loaded?.session.network ?? [],
     console: loaded?.session.console ?? [],
+    clicks: loaded?.session.clicks ?? [],
     meta: loaded?.session.meta ?? {
       url: "",
       title: "",
@@ -38,6 +39,10 @@ export default function App() {
   const networkErrorMarkers = useMemo(
     () => getNetworkErrorMarkers(loaded?.session.network ?? []),
     [loaded?.session.network],
+  );
+  const clickMarkers = useMemo(
+    () => loaded?.session.clicks ?? [],
+    [loaded?.session.clicks],
   );
 
   if (!loaded) {
@@ -66,7 +71,14 @@ export default function App() {
       </header>
 
       <ResizableDrawer
-        main={<VideoPlayer videoUrl={loaded.videoUrl} videoRef={playback.videoRef} />}
+        main={
+          <VideoPlayer
+            videoUrl={loaded.videoUrl}
+            videoRef={playback.videoRef}
+            ripples={playback.activeRipples}
+            meta={session.meta}
+          />
+        }
         drawer={
           <>
             <div className="flex shrink-0 border-b border-slate-800">
@@ -109,6 +121,7 @@ export default function App() {
         durationMs={playback.durationMs}
         isPlaying={playback.isPlaying}
         errorMarkers={networkErrorMarkers}
+        clickMarkers={clickMarkers}
         onSeek={playback.seek}
         onTogglePlay={playback.togglePlay}
       />

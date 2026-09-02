@@ -13,6 +13,13 @@ export interface BuggerSessionMeta {
   videoStartOffsetMs?: number;
   /** Actual encoded video length in milliseconds. */
   videoDurationMs?: number;
+  /** Tab viewport at recording start (CSS pixels). */
+  captureViewportWidth?: number;
+  captureViewportHeight?: number;
+  captureDevicePixelRatio?: number;
+  /** Encoded tab-capture frame size in device pixels. */
+  captureVideoWidth?: number;
+  captureVideoHeight?: number;
 }
 
 export interface NetworkEvent {
@@ -39,11 +46,25 @@ export interface ConsoleEvent {
   source?: string;
 }
 
+export interface ClickEvent {
+  t: number;
+  x: number;
+  y: number;
+  tag: string;
+  selector?: string;
+  url: string;
+  /** Viewport width in CSS pixels when the click occurred. */
+  viewportWidth?: number;
+  /** Viewport height in CSS pixels when the click occurred. */
+  viewportHeight?: number;
+}
+
 export interface BuggerSession {
   version: typeof SESSION_VERSION;
   meta: BuggerSessionMeta;
   network: NetworkEvent[];
   console: ConsoleEvent[];
+  clicks: ClickEvent[];
 }
 
 export interface LoadedSession {
@@ -57,6 +78,7 @@ export function createEmptySession(meta: Omit<BuggerSessionMeta, "durationMs">):
     meta: { ...meta, durationMs: 0 },
     network: [],
     console: [],
+    clicks: [],
   };
 }
 

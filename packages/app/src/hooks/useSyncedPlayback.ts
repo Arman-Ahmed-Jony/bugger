@@ -1,22 +1,26 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { BuggerSessionMeta, ConsoleEvent, NetworkEvent } from "@bugger/shared";
+import type { BuggerSessionMeta, ClickEvent, ConsoleEvent, NetworkEvent } from "@bugger/shared";
 import {
   sessionTimeToVideoSeconds,
   videoSecondsToSessionTime,
 } from "@bugger/shared";
+import type { ActiveRipple } from "../components/ClickRippleOverlay";
+import { clickToRippleInput, clicksNearTime } from "../utils/clickRipple";
 
 interface UseSyncedPlaybackOptions {
   network: NetworkEvent[];
   console: ConsoleEvent[];
+  clicks: ClickEvent[];
   meta: BuggerSessionMeta;
 }
 
-export function useSyncedPlayback({ network, console, meta }: UseSyncedPlaybackOptions) {
+export function useSyncedPlayback({ network, console, clicks, meta }: UseSyncedPlaybackOptions) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [currentT, setCurrentT] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [highlightNetworkIds, setHighlightNetworkIds] = useState<Set<string>>(new Set());
   const [highlightConsoleKeys, setHighlightConsoleKeys] = useState<Set<string>>(new Set());
+  const [activeRipples, setActiveRipples] = useState<ActiveRipple[]>([]);
   const lastTRef = useRef(0);
 
   const durationMs = meta.durationMs;
@@ -31,6 +35,25 @@ export function useSyncedPlayback({ network, console, meta }: UseSyncedPlaybackO
     [console, currentT],
   );
 
+  const triggerRipples = useCallback(
+    (clickEvents: ClickEvent[]) => {
+      if (clickEvents.length === 0) return;
+
+      const video = videoRef.current;
+      if (!video) return;
+
+      const newRipples = clickEvents.map((click) => clickToRippleInput(click, meta, video));
+
+      setActiveRipples((previous) => [...previous, ...newRipples]);
+
+      const ids = new Set(newRipples.map((ripple) => ripple.id));
+      window.setTimeout(() => {
+        setActiveRipples((previous) => previous.filter((ripple) => !ids.has(ripple.id)));
+      }, 700);
+    },
+    [meta],
+  );
+
   const seek = useCallback(
     (sessionT: number) => {
       const clamped = Math.max(0, Math.min(sessionT, durationMs));
@@ -40,8 +63,9 @@ export function useSyncedPlayback({ network, console, meta }: UseSyncedPlaybackO
       }
       setCurrentT(clamped);
       lastTRef.current = clamped;
+      triggerRipples(clicksNearTime(clicks, clamped));
     },
-    [durationMs, meta],
+    [clicks, durationMs, meta, triggerRipples],
   );
 
   const togglePlay = useCallback(() => {
@@ -69,6 +93,7 @@ export function useSyncedPlayback({ network, console, meta }: UseSyncedPlaybackO
       const newConsoleKeys = console
         .filter((event) => event.t > lastT && event.t <= t)
         .map((event) => `${event.t}-${event.level}-${event.args.join("|")}`);
+      const newClicks = clicks.filter((click) => click.t > lastT && click.t <= t);
 
       if (newNetworkIds.length > 0) {
         setHighlightNetworkIds(new Set(newNetworkIds));
@@ -77,6 +102,9 @@ export function useSyncedPlayback({ network, console, meta }: UseSyncedPlaybackO
       if (newConsoleKeys.length > 0) {
         setHighlightConsoleKeys(new Set(newConsoleKeys));
         window.setTimeout(() => setHighlightConsoleKeys(new Set()), 900);
+      }
+      if (newClicks.length > 0) {
+        triggerRipples(newClicks);
       }
 
       lastTRef.current = t;
@@ -109,7 +137,7 @@ export function useSyncedPlayback({ network, console, meta }: UseSyncedPlaybackO
       video.removeEventListener("seeked", onSeeked);
       video.removeEventListener("ended", onEnded);
     };
-  }, [network, console, meta, durationMs]);
+  }, [clicks, console, durationMs, meta, network, triggerRipples]);
 
   const networkKey = (event: NetworkEvent) => `${event.requestId}-${event.phase}-${event.t}`;
   const consoleKey = (event: ConsoleEvent) => `${event.t}-${event.level}-${event.args.join("|")}`;
@@ -124,6 +152,7 @@ export function useSyncedPlayback({ network, console, meta }: UseSyncedPlaybackO
     togglePlay,
     highlightNetworkIds,
     highlightConsoleKeys,
+    activeRipples,
     networkKey,
     consoleKey,
     durationMs,

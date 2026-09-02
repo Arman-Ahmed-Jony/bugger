@@ -1,4 +1,5 @@
-import type { ConsoleEvent, NetworkEvent } from "@bugger/shared";
+import type { ClickEvent, ConsoleEvent, NetworkEvent } from "@bugger/shared";
+import { CLICK_BINDING_NAME, CLICK_CAPTURE_SCRIPT } from "./clickCapture.js";
 
 type HeaderEntry = { name: string; value?: string };
 type NetworkPatch = Partial<Pick<NetworkEvent, "requestBody" | "responseBody" | "size">>;
@@ -42,6 +43,7 @@ export class CdpRecorder {
   private onNetwork: (event: NetworkEvent) => void;
   private onNetworkPatch: (requestId: string, phase: NetworkEvent["phase"], patch: NetworkPatch) => void;
   private onConsole: (event: ConsoleEvent) => void;
+  private onClick: (event: ClickEvent) => void;
   private attached = false;
   private responseMeta = new Map<string, { url: string; mimeType?: string; encodedDataLength?: number }>();
 
@@ -51,12 +53,14 @@ export class CdpRecorder {
     onNetwork: (event: NetworkEvent) => void,
     onNetworkPatch: (requestId: string, phase: NetworkEvent["phase"], patch: NetworkPatch) => void,
     onConsole: (event: ConsoleEvent) => void,
+    onClick: (event: ClickEvent) => void,
   ) {
     this.tabId = tabId;
     this.sessionStartMs = sessionStartMs;
     this.onNetwork = onNetwork;
     this.onNetworkPatch = onNetworkPatch;
     this.onConsole = onConsole;
+    this.onClick = onClick;
   }
 
   private timestamp(): number {
@@ -73,7 +77,37 @@ export class CdpRecorder {
     this.attached = true;
     await chrome.debugger.sendCommand(debuggee, "Network.enable");
     await chrome.debugger.sendCommand(debuggee, "Runtime.enable");
+    await chrome.debugger.sendCommand(debuggee, "Page.enable");
+    await chrome.debugger.sendCommand(debuggee, "Runtime.addBinding", { name: CLICK_BINDING_NAME });
+    await chrome.debugger.sendCommand(debuggee, "Page.addScriptToEvaluateOnNewDocument", {
+      source: CLICK_CAPTURE_SCRIPT,
+    });
+    await chrome.debugger.sendCommand(debuggee, "Runtime.evaluate", {
+      expression: CLICK_CAPTURE_SCRIPT,
+    });
     chrome.debugger.onEvent.addListener(this.handleEvent);
+  }
+
+  async captureViewport(): Promise<{
+    width: number;
+    height: number;
+    devicePixelRatio: number;
+  }> {
+    const result = (await chrome.debugger.sendCommand(this.debuggee(), "Runtime.evaluate", {
+      expression: `({
+        width: document.documentElement.clientWidth,
+        height: document.documentElement.clientHeight,
+        devicePixelRatio: window.devicePixelRatio || 1
+      })`,
+      returnByValue: true,
+    })) as { result?: { value?: { width: number; height: number; devicePixelRatio: number } } };
+
+    const value = result.result?.value;
+    return {
+      width: value?.width ?? 0,
+      height: value?.height ?? 0,
+      devicePixelRatio: value?.devicePixelRatio ?? 1,
+    };
   }
 
   async detach(): Promise<void> {
@@ -113,6 +147,9 @@ export class CdpRecorder {
         break;
       case "Runtime.exceptionThrown":
         this.handleExceptionThrown(params as Runtime.ExceptionThrownEvent);
+        break;
+      case "Runtime.bindingCalled":
+        this.handleBindingCalled(params as Runtime.BindingCalledEvent);
         break;
     }
   };
@@ -214,6 +251,35 @@ export class CdpRecorder {
       return truncateBody(result.body);
     } catch {
       return undefined;
+    }
+  }
+
+  private handleBindingCalled(params: Runtime.BindingCalledEvent): void {
+    if (params.name !== CLICK_BINDING_NAME) return;
+
+    try {
+      const data = JSON.parse(params.payload) as {
+        x: number;
+        y: number;
+        tag: string;
+        selector?: string;
+        url: string;
+        viewportWidth?: number;
+        viewportHeight?: number;
+      };
+
+      this.onClick({
+        t: this.timestamp(),
+        x: data.x,
+        y: data.y,
+        tag: data.tag,
+        selector: data.selector,
+        url: data.url,
+        viewportWidth: data.viewportWidth,
+        viewportHeight: data.viewportHeight,
+      });
+    } catch {
+      // Ignore malformed click payloads.
     }
   }
 
@@ -328,5 +394,10 @@ namespace Runtime {
       exception?: { description?: string };
       stackTrace?: StackTrace;
     };
+  }
+
+  export interface BindingCalledEvent {
+    name: string;
+    payload: string;
   }
 }

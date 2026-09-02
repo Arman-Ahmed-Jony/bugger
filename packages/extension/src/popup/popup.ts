@@ -6,6 +6,7 @@ const metaEl = document.getElementById("meta")!;
 const durationEl = document.getElementById("duration")!;
 const networkCountEl = document.getElementById("network-count")!;
 const consoleCountEl = document.getElementById("console-count")!;
+const clickCountEl = document.getElementById("click-count")!;
 const errorEl = document.getElementById("error")!;
 const recordBtn = document.getElementById("record-btn") as HTMLButtonElement;
 const stopBtn = document.getElementById("stop-btn") as HTMLButtonElement;
@@ -70,6 +71,7 @@ function render(state: RecordingState, error?: string): void {
   durationEl.textContent = formatTimestamp(state.durationMs);
   networkCountEl.textContent = String(state.networkCount);
   consoleCountEl.textContent = String(state.consoleCount);
+  clickCountEl.textContent = String(state.clickCount);
 
   recordBtn.classList.toggle("hidden", state.status === "recording");
   stopBtn.classList.toggle("hidden", state.status !== "recording");
@@ -98,7 +100,7 @@ recordBtn.addEventListener("click", async () => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) {
       render(
-        { status: "idle", networkCount: 0, consoleCount: 0, durationMs: 0 },
+        { status: "idle", networkCount: 0, consoleCount: 0, clickCount: 0, durationMs: 0 },
         "No active tab found",
       );
       return;
@@ -107,7 +109,7 @@ recordBtn.addEventListener("click", async () => {
     const response = await sendMessage({ type: "START_RECORDING", tabId: tab.id });
     if (!response.ok) {
       render(
-        { status: "idle", networkCount: 0, consoleCount: 0, durationMs: 0 },
+        { status: "idle", networkCount: 0, consoleCount: 0, clickCount: 0, durationMs: 0 },
         response.error,
       );
       return;
@@ -124,7 +126,7 @@ stopBtn.addEventListener("click", async () => {
     const response = await sendMessage({ type: "STOP_RECORDING" });
     if (!response.ok) {
       render(
-        { status: "idle", networkCount: 0, consoleCount: 0, durationMs: 0 },
+        { status: "idle", networkCount: 0, consoleCount: 0, clickCount: 0, durationMs: 0 },
         response.error,
       );
       return;

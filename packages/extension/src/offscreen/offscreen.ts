@@ -28,7 +28,11 @@ async function getVideoDurationMs(blob: Blob): Promise<number> {
   }
 }
 
-async function startCapture(streamId: string, sessionStartMs: number): Promise<number> {
+async function startCapture(streamId: string, sessionStartMs: number): Promise<{
+  videoStartOffsetMs: number;
+  captureVideoWidth: number;
+  captureVideoHeight: number;
+}> {
   recordedChunks = [];
 
   const stream = await navigator.mediaDevices.getUserMedia({
@@ -41,6 +45,11 @@ async function startCapture(streamId: string, sessionStartMs: number): Promise<n
     },
   } as MediaStreamConstraints);
 
+  const videoTrack = stream.getVideoTracks()[0];
+  const settings = videoTrack?.getSettings() ?? {};
+  const captureVideoWidth = settings.width ?? 0;
+  const captureVideoHeight = settings.height ?? 0;
+
   const mimeType = pickMimeType();
   mediaRecorder = new MediaRecorder(stream, { mimeType });
 
@@ -51,7 +60,11 @@ async function startCapture(streamId: string, sessionStartMs: number): Promise<n
   };
 
   mediaRecorder.start(250);
-  return Date.now() - sessionStartMs;
+  return {
+    videoStartOffsetMs: Date.now() - sessionStartMs,
+    captureVideoWidth,
+    captureVideoHeight,
+  };
 }
 
 async function stopCapture(): Promise<{ videoBase64: string; videoDurationMs: number }> {
@@ -92,8 +105,13 @@ chrome.runtime.onMessage.addListener(
     (async () => {
       try {
         if (message.type === "START_CAPTURE") {
-          const videoStartOffsetMs = await startCapture(message.streamId, message.sessionStartMs);
-          sendResponse({ ok: true, videoStartOffsetMs });
+          const capture = await startCapture(message.streamId, message.sessionStartMs);
+          sendResponse({
+            ok: true,
+            videoStartOffsetMs: capture.videoStartOffsetMs,
+            captureVideoWidth: capture.captureVideoWidth,
+            captureVideoHeight: capture.captureVideoHeight,
+          });
           return;
         }
 

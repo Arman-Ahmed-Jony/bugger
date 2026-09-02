@@ -1,4 +1,4 @@
-import type { BuggerSession, ConsoleEvent, NetworkEvent } from "@bugger/shared";
+import type { BuggerSession, ClickEvent, ConsoleEvent, NetworkEvent } from "@bugger/shared";
 import { createEmptySession } from "@bugger/shared";
 import { CdpRecorder } from "../recorder/cdp.js";
 import {
@@ -15,9 +15,12 @@ let state: RecordingState = { ...DEFAULT_STATE };
 let cdpRecorder: CdpRecorder | null = null;
 let networkEvents: NetworkEvent[] = [];
 let consoleEvents: ConsoleEvent[] = [];
+let clickEvents: ClickEvent[] = [];
 let durationTimer: ReturnType<typeof setInterval> | null = null;
 let storedSession: StoredSession | null = null;
 let videoStartOffsetMs = 0;
+let captureViewport = { width: 0, height: 0, devicePixelRatio: 1 };
+let captureVideoSize = { width: 0, height: 0 };
 
 async function ensureOffscreenDocument(): Promise<void> {
   const existingContexts = await chrome.runtime.getContexts({
@@ -99,8 +102,11 @@ async function startRecording(tabId: number): Promise<void> {
 
   networkEvents = [];
   consoleEvents = [];
+  clickEvents = [];
   storedSession = null;
   videoStartOffsetMs = 0;
+  captureViewport = { width: 0, height: 0, devicePixelRatio: 1 };
+  captureVideoSize = { width: 0, height: 0 };
 
   state = {
     status: "recording",
@@ -111,6 +117,7 @@ async function startRecording(tabId: number): Promise<void> {
     title: tab.title ?? tab.url,
     networkCount: 0,
     consoleCount: 0,
+    clickCount: 0,
     durationMs: 0,
   };
 
@@ -128,9 +135,14 @@ async function startRecording(tabId: number): Promise<void> {
       consoleEvents.push(event);
       state = { ...state, consoleCount: consoleEvents.length };
     },
+    (event) => {
+      clickEvents.push(event);
+      state = { ...state, clickCount: clickEvents.length };
+    },
   );
 
   await cdpRecorder.attach();
+  captureViewport = await cdpRecorder.captureViewport();
   await ensureOffscreenDocument();
 
   const streamId = await getMediaStreamId({ targetTabId: tabId });
@@ -143,6 +155,10 @@ async function startRecording(tabId: number): Promise<void> {
     throw new Error(offscreenStart.error ?? "Failed to start video capture");
   }
   videoStartOffsetMs = offscreenStart.videoStartOffsetMs ?? 0;
+  captureVideoSize = {
+    width: offscreenStart.captureVideoWidth ?? 0,
+    height: offscreenStart.captureVideoHeight ?? 0,
+  };
 
   startDurationTimer();
   updateBadge();
@@ -204,9 +220,15 @@ async function stopRecording(): Promise<void> {
       userAgent: navigator.userAgent,
       videoStartOffsetMs,
       videoDurationMs: offscreenStop.videoDurationMs,
+      captureViewportWidth: captureViewport.width || undefined,
+      captureViewportHeight: captureViewport.height || undefined,
+      captureDevicePixelRatio: captureViewport.devicePixelRatio || undefined,
+      captureVideoWidth: captureVideoSize.width || undefined,
+      captureVideoHeight: captureVideoSize.height || undefined,
     },
     network: networkEvents,
     console: consoleEvents,
+    clicks: clickEvents,
   };
 
   storedSession = {
@@ -227,8 +249,11 @@ function getExportData(): StoredSession {
 function clearSession(): void {
   networkEvents = [];
   consoleEvents = [];
+  clickEvents = [];
   storedSession = null;
   videoStartOffsetMs = 0;
+  captureViewport = { width: 0, height: 0, devicePixelRatio: 1 };
+  captureVideoSize = { width: 0, height: 0 };
   state = { ...DEFAULT_STATE };
   updateBadge();
 }

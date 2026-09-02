@@ -11,6 +11,7 @@ export interface RecordingState {
   title?: string;
   networkCount: number;
   consoleCount: number;
+  clickCount: number;
   durationMs: number;
   error?: string;
 }
@@ -36,7 +37,14 @@ export type OffscreenMessage =
   | { type: "STOP_CAPTURE" };
 
 export type OffscreenResponse =
-  | { ok: true; videoBase64?: string; videoStartOffsetMs?: number; videoDurationMs?: number }
+  | {
+      ok: true;
+      videoBase64?: string;
+      videoStartOffsetMs?: number;
+      videoDurationMs?: number;
+      captureVideoWidth?: number;
+      captureVideoHeight?: number;
+    }
   | { ok: false; error: string };
 
 export const OFFSCREEN_DOCUMENT_PATH = "src/offscreen/offscreen.html";
@@ -45,6 +53,7 @@ export const DEFAULT_STATE: RecordingState = {
   status: "idle",
   networkCount: 0,
   consoleCount: 0,
+  clickCount: 0,
   durationMs: 0,
 };
 

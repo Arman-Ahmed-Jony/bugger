@@ -42,6 +42,9 @@ export async function unpackSession(file: Blob | ArrayBuffer): Promise<LoadedSes
   }
 
   const session = JSON.parse(new TextDecoder().decode(manifestBytes)) as BuggerSession;
+  if (!session.clicks) {
+    session.clicks = [];
+  }
   const videoUrl = URL.createObjectURL(u8ToBlob(videoBytes, "video/webm"));
 
   return { session, videoUrl };
