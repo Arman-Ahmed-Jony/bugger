@@ -5,6 +5,7 @@ import { VideoPlayer } from "./components/VideoPlayer";
 import { Timeline } from "./components/Timeline";
 import { NetworkPanel } from "./components/NetworkPanel";
 import { ConsolePanel } from "./components/ConsolePanel";
+import { ResizableDrawer } from "./components/ResizableDrawer";
 import { useSyncedPlayback } from "./hooks/useSyncedPlayback";
 
 type SidePanel = "network" | "console";
@@ -58,42 +59,43 @@ export default function App() {
         </button>
       </header>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[1fr_420px]">
-        <VideoPlayer videoUrl={loaded.videoUrl} videoRef={playback.videoRef} />
-
-        <aside className="flex min-h-0 flex-col overflow-hidden border-t border-slate-800 lg:border-l lg:border-t-0">
-          <div className="flex shrink-0 border-b border-slate-800">
-            <TabButton
-              active={panel === "network"}
-              label={`Network (${playback.visibleNetwork.length})`}
-              onClick={() => setPanel("network")}
-            />
-            <TabButton
-              active={panel === "console"}
-              label={`Console (${playback.visibleConsole.length})`}
-              onClick={() => setPanel("console")}
-            />
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-hidden">
-            {panel === "network" ? (
-              <NetworkPanel
-                events={playback.visibleNetwork}
-                highlightIds={playback.highlightNetworkIds}
-                networkKey={playback.networkKey}
-                onSeek={playback.seek}
+      <ResizableDrawer
+        main={<VideoPlayer videoUrl={loaded.videoUrl} videoRef={playback.videoRef} />}
+        drawer={
+          <>
+            <div className="flex shrink-0 border-b border-slate-800">
+              <TabButton
+                active={panel === "network"}
+                label={`Network (${playback.visibleNetwork.length})`}
+                onClick={() => setPanel("network")}
               />
-            ) : (
-              <ConsolePanel
-                events={playback.visibleConsole}
-                highlightKeys={playback.highlightConsoleKeys}
-                consoleKey={playback.consoleKey}
-                onSeek={playback.seek}
+              <TabButton
+                active={panel === "console"}
+                label={`Console (${playback.visibleConsole.length})`}
+                onClick={() => setPanel("console")}
               />
-            )}
-          </div>
-        </aside>
-      </div>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-hidden">
+              {panel === "network" ? (
+                <NetworkPanel
+                  events={playback.visibleNetwork}
+                  highlightIds={playback.highlightNetworkIds}
+                  networkKey={playback.networkKey}
+                  onSeek={playback.seek}
+                />
+              ) : (
+                <ConsolePanel
+                  events={playback.visibleConsole}
+                  highlightKeys={playback.highlightConsoleKeys}
+                  consoleKey={playback.consoleKey}
+                  onSeek={playback.seek}
+                />
+              )}
+            </div>
+          </>
+        }
+      />
 
       <Timeline
         currentT={playback.currentT}
