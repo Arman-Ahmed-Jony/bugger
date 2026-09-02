@@ -3,6 +3,7 @@ import { RequestDetailDrawer } from "./RequestDetailDrawer";
 
 interface NetworkPanelProps {
   events: NetworkEvent[];
+  allEvents: NetworkEvent[];
   highlightIds: Set<string>;
   networkKey: (event: NetworkEvent) => string;
   onSeek: (t: number) => void;
@@ -15,7 +16,7 @@ function statusColor(status?: number): string {
   return "text-yellow-400";
 }
 
-export function NetworkPanel({ events, highlightIds, networkKey, onSeek }: NetworkPanelProps) {
+export function NetworkPanel({ events, allEvents, highlightIds, networkKey, onSeek }: NetworkPanelProps) {
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <div className="border-b border-slate-800 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
@@ -58,7 +59,7 @@ export function NetworkPanel({ events, highlightIds, networkKey, onSeek }: Netwo
                       {event.url}
                     </td>
                     <td className="px-3 py-2">
-                      <RequestDetailDrawer event={event} />
+                      <RequestDetailDrawer event={event} allEvents={allEvents} />
                     </td>
                   </tr>
                 );

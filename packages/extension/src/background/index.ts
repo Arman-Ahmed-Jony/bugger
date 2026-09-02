@@ -70,6 +70,20 @@ function stopDurationTimer(): void {
   }
 }
 
+function patchNetworkEvent(
+  requestId: string,
+  phase: NetworkEvent["phase"],
+  patch: Partial<NetworkEvent>,
+): void {
+  for (let i = networkEvents.length - 1; i >= 0; i -= 1) {
+    const event = networkEvents[i];
+    if (event?.requestId === requestId && event.phase === phase) {
+      networkEvents[i] = { ...event, ...patch };
+      return;
+    }
+  }
+}
+
 async function startRecording(tabId: number): Promise<void> {
   if (state.status === "recording") {
     throw new Error("Already recording");
@@ -106,6 +120,9 @@ async function startRecording(tabId: number): Promise<void> {
     (event) => {
       networkEvents.push(event);
       state = { ...state, networkCount: networkEvents.length };
+    },
+    (requestId, phase, patch) => {
+      patchNetworkEvent(requestId, phase, patch);
     },
     (event) => {
       consoleEvents.push(event);

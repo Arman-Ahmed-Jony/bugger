@@ -1,6 +1,9 @@
 import type { ConsoleEvent, NetworkEvent } from "@bugger/shared";
 
 type HeaderEntry = { name: string; value?: string };
+type NetworkPatch = Partial<Pick<NetworkEvent, "requestBody" | "responseBody" | "size">>;
+
+const MAX_BODY_BYTES = 512 * 1024;
 
 function normalizeHeaders(headers: HeaderEntry[] | Record<string, string> | undefined): Record<string, string> | undefined {
   if (!headers) return undefined;
@@ -9,6 +12,11 @@ function normalizeHeaders(headers: HeaderEntry[] | Record<string, string> | unde
     return Object.fromEntries(headers.map((h) => [h.name, h.value ?? ""]));
   }
   return headers;
+}
+
+function truncateBody(body: string): string {
+  if (body.length <= MAX_BODY_BYTES) return body;
+  return `${body.slice(0, MAX_BODY_BYTES)}\n\n... [truncated ${body.length - MAX_BODY_BYTES} characters]`;
 }
 
 function serializeRemoteObject(obj: Runtime.RemoteObject | undefined): string {
@@ -32,18 +40,22 @@ export class CdpRecorder {
   private tabId: number;
   private sessionStartMs: number;
   private onNetwork: (event: NetworkEvent) => void;
+  private onNetworkPatch: (requestId: string, phase: NetworkEvent["phase"], patch: NetworkPatch) => void;
   private onConsole: (event: ConsoleEvent) => void;
   private attached = false;
+  private responseMeta = new Map<string, { url: string; mimeType?: string; encodedDataLength?: number }>();
 
   constructor(
     tabId: number,
     sessionStartMs: number,
     onNetwork: (event: NetworkEvent) => void,
+    onNetworkPatch: (requestId: string, phase: NetworkEvent["phase"], patch: NetworkPatch) => void,
     onConsole: (event: ConsoleEvent) => void,
   ) {
     this.tabId = tabId;
     this.sessionStartMs = sessionStartMs;
     this.onNetwork = onNetwork;
+    this.onNetworkPatch = onNetworkPatch;
     this.onConsole = onConsole;
   }
 
@@ -51,8 +63,12 @@ export class CdpRecorder {
     return Date.now() - this.sessionStartMs;
   }
 
+  private debuggee(): chrome.debugger.Debuggee {
+    return { tabId: this.tabId };
+  }
+
   async attach(): Promise<void> {
-    const debuggee = { tabId: this.tabId };
+    const debuggee = this.debuggee();
     await chrome.debugger.attach(debuggee, "1.3");
     this.attached = true;
     await chrome.debugger.sendCommand(debuggee, "Network.enable");
@@ -63,6 +79,7 @@ export class CdpRecorder {
   async detach(): Promise<void> {
     if (!this.attached) return;
     chrome.debugger.onEvent.removeListener(this.handleEvent);
+    this.responseMeta.clear();
     try {
       await chrome.debugger.detach({ tabId: this.tabId });
     } catch {
@@ -85,6 +102,9 @@ export class CdpRecorder {
       case "Network.responseReceived":
         this.handleResponseReceived(params as Network.ResponseReceivedEvent);
         break;
+      case "Network.loadingFinished":
+        void this.handleLoadingFinished(params as Network.LoadingFinishedEvent);
+        break;
       case "Network.loadingFailed":
         this.handleLoadingFailed(params as Network.LoadingFailedEvent);
         break;
@@ -99,6 +119,8 @@ export class CdpRecorder {
 
   private handleRequestWillBeSent(params: Network.RequestWillBeSentEvent): void {
     const { requestId, request } = params;
+    const requestBody = request.postData ? truncateBody(request.postData) : undefined;
+
     this.onNetwork({
       t: this.timestamp(),
       phase: "request",
@@ -106,11 +128,22 @@ export class CdpRecorder {
       method: request.method,
       url: request.url,
       requestHeaders: normalizeHeaders(request.headers),
+      requestBody,
     });
+
+    if (!requestBody) {
+      void this.fetchRequestBody(requestId);
+    }
   }
 
   private handleResponseReceived(params: Network.ResponseReceivedEvent): void {
     const { requestId, response } = params;
+    this.responseMeta.set(requestId, {
+      url: response.url,
+      mimeType: response.mimeType,
+      encodedDataLength: response.encodedDataLength,
+    });
+
     this.onNetwork({
       t: this.timestamp(),
       phase: "response",
@@ -120,6 +153,17 @@ export class CdpRecorder {
       statusText: response.statusText,
       responseHeaders: normalizeHeaders(response.headers),
       mimeType: response.mimeType,
+      size: response.encodedDataLength,
+    });
+  }
+
+  private async handleLoadingFinished(params: Network.LoadingFinishedEvent): Promise<void> {
+    const body = await this.fetchResponseBody(params.requestId);
+    if (!body) return;
+
+    this.onNetworkPatch(params.requestId, "response", {
+      responseBody: body,
+      size: params.encodedDataLength,
     });
   }
 
@@ -131,6 +175,46 @@ export class CdpRecorder {
       url: params.documentURL ?? "unknown",
       statusText: params.errorText,
     });
+  }
+
+  private async fetchRequestBody(requestId: string): Promise<void> {
+    try {
+      const result = (await chrome.debugger.sendCommand(this.debuggee(), "Network.getRequestPostData", {
+        requestId,
+      })) as { postData?: string };
+
+      if (!result.postData) return;
+      this.onNetworkPatch(requestId, "request", {
+        requestBody: truncateBody(result.postData),
+      });
+    } catch {
+      // No request body available.
+    }
+  }
+
+  private async fetchResponseBody(requestId: string): Promise<string | undefined> {
+    try {
+      const result = (await chrome.debugger.sendCommand(this.debuggee(), "Network.getResponseBody", {
+        requestId,
+      })) as { body: string; base64Encoded: boolean };
+
+      if (result.base64Encoded) {
+        const meta = this.responseMeta.get(requestId);
+        const isText = meta?.mimeType?.startsWith("text/") || meta?.mimeType?.includes("json") || meta?.mimeType?.includes("javascript");
+        if (!isText) {
+          return `[binary body, ${result.body.length} base64 characters omitted]`;
+        }
+        try {
+          return truncateBody(atob(result.body));
+        } catch {
+          return "[binary body, unable to decode]";
+        }
+      }
+
+      return truncateBody(result.body);
+    } catch {
+      return undefined;
+    }
   }
 
   private handleConsoleCalled(params: Runtime.ConsoleAPICalledEvent): void {
@@ -175,12 +259,12 @@ export class CdpRecorder {
   }
 }
 
-// Minimal CDP type namespaces for Chrome extension APIs.
 namespace Network {
   export interface Request {
     method: string;
     url: string;
     headers?: Record<string, string>;
+    postData?: string;
   }
 
   export interface Response {
@@ -189,6 +273,7 @@ namespace Network {
     statusText: string;
     headers?: Record<string, string>;
     mimeType?: string;
+    encodedDataLength?: number;
   }
 
   export interface RequestWillBeSentEvent {
@@ -199,6 +284,11 @@ namespace Network {
   export interface ResponseReceivedEvent {
     requestId: string;
     response: Response;
+  }
+
+  export interface LoadingFinishedEvent {
+    requestId: string;
+    encodedDataLength?: number;
   }
 
   export interface LoadingFailedEvent {

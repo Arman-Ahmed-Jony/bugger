@@ -80,6 +80,7 @@ export default function App() {
               {panel === "network" ? (
                 <NetworkPanel
                   events={playback.visibleNetwork}
+                  allEvents={session.network}
                   highlightIds={playback.highlightNetworkIds}
                   networkKey={playback.networkKey}
                   onSeek={playback.seek}
