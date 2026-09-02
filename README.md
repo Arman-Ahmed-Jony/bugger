@@ -65,10 +65,11 @@ Open http://localhost:5173, then drag-and-drop or choose your `.bugger` file.
 ### Replay controls
 
 - **Play / Pause** — drive the timeline
-- **Scrubber** — seek to any timestamp
+- **Playback speed** — 0.25× to 4× with step buttons or dropdown
+- **Scrubber** — seek to any timestamp; click/error markers on the timeline
 - **Network / Console tabs** — events visible up to the current time
 - **Click an event** — seek video to that event's timestamp
-- **Details** — inspect request/response headers on network events
+- **Details** — inspect request/response headers and bodies on network events
 
 ## Development
 
@@ -92,9 +93,9 @@ A `.bugger` file is a ZIP containing:
 
 - Chrome/Chromium/Edge only
 - Debugger banner visible during recording
-- No request/response bodies
 - Single tab per session
 - Video replay (not live DOM re-render)
+- Unpacked extension install only (not published to Chrome Web Store)
 
 ## License
 
