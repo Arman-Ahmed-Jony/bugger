@@ -199,3 +199,56 @@ export function formatSize(size?: number): string {
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
+
+export interface NetworkErrorMarker {
+  t: number;
+  requestId: string;
+  url: string;
+  method?: string;
+  status?: number;
+  statusText?: string;
+}
+
+export function getNetworkErrorMarkers(events: NetworkEvent[]): NetworkErrorMarker[] {
+  const grouped = new Map<string, NetworkEvent[]>();
+
+  for (const event of events) {
+    const list = grouped.get(event.requestId) ?? [];
+    list.push(event);
+    grouped.set(event.requestId, list);
+  }
+
+  const markers: NetworkErrorMarker[] = [];
+
+  for (const [requestId, related] of grouped.entries()) {
+    const request = related.find((event) => event.phase === "request");
+    const response = related.find((event) => event.phase === "response");
+    const failed = related.find((event) => event.phase === "failed");
+    const url = request?.url ?? response?.url ?? failed?.url ?? "unknown";
+    const method = request?.method;
+
+    if (failed) {
+      markers.push({
+        t: failed.t,
+        requestId,
+        url,
+        method,
+        statusText: failed.statusText,
+      });
+      continue;
+    }
+
+    if (response?.status !== undefined && response.status >= 400) {
+      markers.push({
+        t: response.t,
+        requestId,
+        url,
+        method,
+        status: response.status,
+        statusText: response.statusText,
+      });
+    }
+  }
+
+  return markers.sort((a, b) => a.t - b.t);
+}

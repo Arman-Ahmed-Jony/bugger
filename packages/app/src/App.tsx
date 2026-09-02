@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { LoadedSession } from "@bugger/shared";
 import { SessionLoader } from "./components/SessionLoader";
 import { VideoPlayer } from "./components/VideoPlayer";
@@ -7,6 +7,7 @@ import { NetworkPanel } from "./components/NetworkPanel";
 import { ConsolePanel } from "./components/ConsolePanel";
 import { ResizableDrawer } from "./components/ResizableDrawer";
 import { useSyncedPlayback } from "./hooks/useSyncedPlayback";
+import { getNetworkErrorMarkers } from "./utils/networkTable";
 
 type SidePanel = "network" | "console";
 
@@ -33,6 +34,11 @@ export default function App() {
       }
     };
   }, [loaded?.videoUrl]);
+
+  const networkErrorMarkers = useMemo(
+    () => getNetworkErrorMarkers(loaded?.session.network ?? []),
+    [loaded?.session.network],
+  );
 
   if (!loaded) {
     return <SessionLoader onLoad={setLoaded} />;
@@ -102,6 +108,7 @@ export default function App() {
         currentT={playback.currentT}
         durationMs={playback.durationMs}
         isPlaying={playback.isPlaying}
+        errorMarkers={networkErrorMarkers}
         onSeek={playback.seek}
         onTogglePlay={playback.togglePlay}
       />
