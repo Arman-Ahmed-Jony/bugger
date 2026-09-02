@@ -86,12 +86,75 @@ export function getVideoStartOffsetMs(meta: BuggerSessionMeta): number {
   return meta.videoStartOffsetMs ?? 0;
 }
 
+export function getVideoDurationMs(meta: BuggerSessionMeta, videoSeconds?: number): number {
+  if (meta.videoDurationMs != null && meta.videoDurationMs > 0) {
+    return meta.videoDurationMs;
+  }
+  if (videoSeconds != null && videoSeconds > 0) {
+    return videoSeconds * 1000;
+  }
+  return 0;
+}
+
+/** Session timestamp when the last video frame occurs. */
+export function getVideoEndSessionTime(meta: BuggerSessionMeta, videoSeconds?: number): number {
+  return getVideoStartOffsetMs(meta) + getVideoDurationMs(meta, videoSeconds);
+}
+
+/**
+ * Infer pre-video offset for older sessions missing `videoStartOffsetMs`.
+ * When the first events appear only after a leading gap, that gap matches startup delay.
+ */
+export function resolveVideoStartOffsetMs(
+  meta: BuggerSessionMeta,
+  eventTimesMs: number[] = [],
+): number {
+  const stored = getVideoStartOffsetMs(meta);
+  if (stored > 0) return stored;
+
+  const videoDurationMs = getVideoDurationMs(meta);
+  if (videoDurationMs <= 0) return 0;
+
+  const gap = meta.durationMs - videoDurationMs;
+  if (gap <= 0) return 0;
+
+  const hasEarlyEvents = eventTimesMs.some((t) => t < gap);
+  if (hasEarlyEvents) return 0;
+
+  return gap;
+}
+
 export function sessionTimeToVideoSeconds(sessionT: number, meta: BuggerSessionMeta): number {
   return Math.max(0, (sessionT - getVideoStartOffsetMs(meta)) / 1000);
 }
 
 export function videoSecondsToSessionTime(videoSeconds: number, meta: BuggerSessionMeta): number {
   return videoSeconds * 1000 + getVideoStartOffsetMs(meta);
+}
+
+/** Map session time ↔ video using resolved offset (handles legacy sessions). */
+export function sessionTimeToVideoSecondsResolved(
+  sessionT: number,
+  meta: BuggerSessionMeta,
+  eventTimesMs: number[] = [],
+): number {
+  return Math.max(0, (sessionT - resolveVideoStartOffsetMs(meta, eventTimesMs)) / 1000);
+}
+
+export function videoSecondsToSessionTimeResolved(
+  videoSeconds: number,
+  meta: BuggerSessionMeta,
+  eventTimesMs: number[] = [],
+): number {
+  return videoSeconds * 1000 + resolveVideoStartOffsetMs(meta, eventTimesMs);
+}
+
+export function getVideoEndSessionTimeResolved(
+  meta: BuggerSessionMeta,
+  videoSeconds?: number,
+  eventTimesMs: number[] = [],
+): number {
+  return resolveVideoStartOffsetMs(meta, eventTimesMs) + getVideoDurationMs(meta, videoSeconds);
 }
 
 export function formatTimestamp(ms: number): string {

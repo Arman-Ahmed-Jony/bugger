@@ -187,9 +187,6 @@ async function stopRecording(): Promise<void> {
 
   stopDurationTimer();
 
-  const durationMs = Date.now() - state.sessionStartMs;
-  state = { ...state, status: "stopped", durationMs };
-
   if (cdpRecorder) {
     await cdpRecorder.detach();
     cdpRecorder = null;
@@ -204,6 +201,12 @@ async function stopRecording(): Promise<void> {
   }
 
   await closeOffscreenDocument();
+
+  const wallDurationMs = Date.now() - state.sessionStartMs;
+  const videoEndMs = videoStartOffsetMs + (offscreenStop.videoDurationMs ?? 0);
+  const durationMs = Math.max(wallDurationMs, videoEndMs);
+
+  state = { ...state, status: "stopped", durationMs };
 
   const session: BuggerSession = {
     ...createEmptySession({
