@@ -120,10 +120,13 @@ export default function App() {
         currentT={playback.currentT}
         durationMs={playback.durationMs}
         isPlaying={playback.isPlaying}
+        playbackRate={playback.playbackRate}
         errorMarkers={networkErrorMarkers}
         clickMarkers={clickMarkers}
         onSeek={playback.seek}
         onTogglePlay={playback.togglePlay}
+        onPlaybackRateChange={playback.setPlaybackRate}
+        onStepPlaybackRate={playback.stepPlaybackRate}
       />
     </div>
   );

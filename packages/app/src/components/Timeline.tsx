@@ -1,39 +1,83 @@
 import { formatTimestamp } from "@bugger/shared";
 import type { ClickEvent } from "@bugger/shared";
+import { formatPlaybackRate, PLAYBACK_RATES } from "../utils/playback";
 import type { NetworkErrorMarker } from "../utils/networkTable";
 
 interface TimelineProps {
   currentT: number;
   durationMs: number;
   isPlaying: boolean;
+  playbackRate: number;
   errorMarkers: NetworkErrorMarker[];
   clickMarkers: ClickEvent[];
   onSeek: (t: number) => void;
   onTogglePlay: () => void;
+  onPlaybackRateChange: (rate: number) => void;
+  onStepPlaybackRate: (direction: -1 | 1) => void;
 }
 
 export function Timeline({
   currentT,
   durationMs,
   isPlaying,
+  playbackRate,
   errorMarkers,
   clickMarkers,
   onSeek,
   onTogglePlay,
+  onPlaybackRateChange,
+  onStepPlaybackRate,
 }: TimelineProps) {
   const max = Math.max(durationMs, 1);
   const progressPercent = Math.min(100, (currentT / max) * 100);
+  const atMinRate = playbackRate <= PLAYBACK_RATES[0];
+  const atMaxRate = playbackRate >= PLAYBACK_RATES[PLAYBACK_RATES.length - 1];
 
   return (
     <div className="flex shrink-0 flex-col gap-2 border-t border-slate-800 bg-slate-950 px-4 py-3">
       <div className="flex items-center gap-4">
-        <button
-          type="button"
-          className="rounded-md bg-slate-800 px-3 py-2 text-sm font-semibold hover:bg-slate-700"
-          onClick={onTogglePlay}
-        >
-          {isPlaying ? "Pause" : "Play"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="rounded-md bg-slate-800 px-3 py-2 text-sm font-semibold hover:bg-slate-700"
+            onClick={onTogglePlay}
+          >
+            {isPlaying ? "Pause" : "Play"}
+          </button>
+
+          <div className="flex items-center rounded-md border border-slate-700 bg-slate-900">
+            <button
+              type="button"
+              aria-label="Slower playback"
+              disabled={atMinRate}
+              className="px-2 py-2 text-sm text-slate-300 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+              onClick={() => onStepPlaybackRate(-1)}
+            >
+              −
+            </button>
+            <select
+              aria-label="Playback speed"
+              value={playbackRate}
+              className="cursor-pointer border-x border-slate-700 bg-transparent px-2 py-2 text-sm font-medium text-slate-200 outline-none"
+              onChange={(event) => onPlaybackRateChange(Number(event.target.value))}
+            >
+              {PLAYBACK_RATES.map((rate) => (
+                <option key={rate} value={rate} className="bg-slate-900">
+                  {formatPlaybackRate(rate)}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              aria-label="Faster playback"
+              disabled={atMaxRate}
+              className="px-2 py-2 text-sm text-slate-300 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+              onClick={() => onStepPlaybackRate(1)}
+            >
+              +
+            </button>
+          </div>
+        </div>
 
         <div className="relative flex-1 py-2">
           <div className="pointer-events-none absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-slate-800">
@@ -96,7 +140,7 @@ export function Timeline({
       </div>
 
       {(clickMarkers.length > 0 || errorMarkers.length > 0) && (
-        <div className="flex items-center gap-4 pl-[72px] text-[10px] text-slate-500">
+        <div className="flex items-center gap-4 pl-[220px] text-[10px] text-slate-500">
           {clickMarkers.length > 0 && (
             <span className="inline-flex items-center gap-1">
               <span className="inline-block h-2 w-2 rounded-full bg-sky-400" />

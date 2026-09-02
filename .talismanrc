@@ -1,0 +1,4 @@
+fileignoreconfig:
+- filename: packages/app/src/components/Timeline.tsx
+  checksum: aac3a707cbed0f442a9ed7fd5fd667f0b08cb0123f71df78f84553b430f09f40
+version: "1.0"

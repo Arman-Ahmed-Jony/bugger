@@ -9,6 +9,7 @@ import {
 } from "@bugger/shared";
 import type { ActiveRipple } from "../components/ClickRippleOverlay";
 import { clickToRippleInput, clicksNearTime } from "../utils/clickRipple";
+import { normalizePlaybackRate, stepPlaybackRate as stepRate } from "../utils/playback";
 
 interface UseSyncedPlaybackOptions {
   network: NetworkEvent[];
@@ -37,10 +38,12 @@ export function useSyncedPlayback({ network, console, clicks, meta }: UseSyncedP
   const [highlightConsoleKeys, setHighlightConsoleKeys] = useState<Set<string>>(new Set());
   const [activeRipples, setActiveRipples] = useState<ActiveRipple[]>([]);
   const [videoSeconds, setVideoSeconds] = useState(0);
+  const [playbackRate, setPlaybackRateState] = useState(1);
   const lastTRef = useRef(0);
   const tailFrameRef = useRef<number | null>(null);
   const tailFromRef = useRef(0);
   const playingRef = useRef(false);
+  const playbackRateRef = useRef(1);
 
   const eventTimesMs = useMemo(
     () => collectEventTimes(network, console, clicks),
@@ -128,7 +131,7 @@ export function useSyncedPlayback({ network, console, clicks, meta }: UseSyncedP
       const tick = (now: number) => {
         if (!playingRef.current) return;
 
-        const elapsed = now - startedAt;
+        const elapsed = (now - startedAt) * playbackRateRef.current;
         const nextT = Math.min(durationMs, tailFromRef.current + elapsed);
         const previousT = lastTRef.current;
 
@@ -193,6 +196,31 @@ export function useSyncedPlayback({ network, console, clicks, meta }: UseSyncedP
       triggerRipples,
       videoSeconds,
     ],
+  );
+
+  const setPlaybackRate = useCallback(
+    (rate: number) => {
+      const nextRate = normalizePlaybackRate(rate);
+      playbackRateRef.current = nextRate;
+      setPlaybackRateState(nextRate);
+
+      const video = videoRef.current;
+      if (video) {
+        video.playbackRate = nextRate;
+      }
+
+      if (tailFrameRef.current != null && playingRef.current) {
+        startTailPlayback(lastTRef.current);
+      }
+    },
+    [startTailPlayback],
+  );
+
+  const stepPlaybackRate = useCallback(
+    (direction: -1 | 1) => {
+      setPlaybackRate(stepRate(playbackRateRef.current, direction));
+    },
+    [setPlaybackRate],
   );
 
   const togglePlay = useCallback(() => {
@@ -324,6 +352,14 @@ export function useSyncedPlayback({ network, console, clicks, meta }: UseSyncedP
     return () => stopTailPlayback();
   }, [stopTailPlayback]);
 
+  useEffect(() => {
+    playbackRateRef.current = playbackRate;
+    const video = videoRef.current;
+    if (video) {
+      video.playbackRate = playbackRate;
+    }
+  }, [playbackRate]);
+
   const networkKey = (event: NetworkEvent) => `${event.requestId}-${event.phase}-${event.t}`;
   const consoleKey = (event: ConsoleEvent) => `${event.t}-${event.level}-${event.args.join("|")}`;
 
@@ -342,5 +378,8 @@ export function useSyncedPlayback({ network, console, clicks, meta }: UseSyncedP
     consoleKey,
     durationMs,
     videoStartOffsetMs,
+    playbackRate,
+    setPlaybackRate,
+    stepPlaybackRate,
   };
 }
