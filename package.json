@@ -5,6 +5,7 @@
     "dev:extension": "pnpm --filter @bugger/extension dev",
     "dev:app": "pnpm --filter @bugger/app dev",
     "build": "pnpm -r build",
+    "build:extension": "pnpm --filter @bugger/extension build",
     "typecheck": "pnpm -r typecheck"
   },
   "devDependencies": {
