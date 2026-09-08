@@ -18,15 +18,17 @@ async function sendMessage(message: BackgroundMessage): Promise<BackgroundRespon
 }
 
 async function downloadBlob(blob: Blob, filename: string): Promise<void> {
+  const safeName = filename.endsWith(".bugger") ? filename : `${filename}.bugger`;
   const url = URL.createObjectURL(blob);
   try {
     await chrome.downloads.download({
       url,
-      filename,
+      filename: safeName,
       saveAs: true,
     });
   } finally {
-    URL.revokeObjectURL(url);
+    // Keep the blob URL alive briefly so Chrome can start the download.
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
 }
 

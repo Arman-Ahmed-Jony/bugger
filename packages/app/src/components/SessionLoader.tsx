@@ -60,7 +60,7 @@ export function SessionLoader({ onLoad }: SessionLoaderProps) {
         <input
           ref={inputRef}
           type="file"
-          accept=".bugger,application/zip"
+          accept=".bugger,application/x-bugger,application/zip"
           className="hidden"
           onChange={(event) => {
             const file = event.target.files?.[0];

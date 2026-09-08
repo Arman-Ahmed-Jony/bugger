@@ -24,7 +24,9 @@ export async function packSession(session: BuggerSession, videoBlob: Blob): Prom
     [MANIFEST_FILENAME]: strToU8(manifestJson),
     [VIDEO_FILENAME]: videoData,
   });
-  return new Blob([u8ToArrayBuffer(zipped)], { type: "application/zip" });
+  // Use a non-zip MIME so Chrome Downloads keeps the `.bugger` extension
+  // instead of rewriting the filename to `.zip`.
+  return new Blob([u8ToArrayBuffer(zipped)], { type: "application/x-bugger" });
 }
 
 export async function unpackSession(file: Blob | ArrayBuffer): Promise<LoadedSession> {
