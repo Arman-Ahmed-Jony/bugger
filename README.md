@@ -56,6 +56,16 @@ pnpm build
 
 ## Replay a session
 
+### Hosted player (GitHub Pages)
+
+After the first successful deploy from `main`, the replay app is at:
+
+https://arman-ahmed-jony.github.io/bugger/
+
+Enable once in the repo: **Settings → Pages → Source: GitHub Actions**.
+
+### Local
+
 ```bash
 pnpm dev:app
 ```
