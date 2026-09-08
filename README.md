@@ -62,7 +62,8 @@ After the first successful deploy from `main`, the replay app is at:
 
 https://arman-ahmed-jony.github.io/bugger/
 
-Enable once in the repo: **Settings → Pages → Source: GitHub Actions**.
+**Required once:** open the repo → **Settings → Pages → Build and deployment → Source** and choose **GitHub Actions**.  
+Workflows cannot create the Pages site themselves with the default `GITHUB_TOKEN`; without this step deploy fails with “Get Pages site failed / Not Found”.
 
 ### Local
 
