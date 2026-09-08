@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { useInView } from "../hooks/useInView";
-import { navigate, routeHref } from "../routing";
+import { extensionDownloadHref, navigate, routeHref } from "../routing";
 import { HeroDemo } from "../components/landing/HeroDemo";
 
 const FEATURES = [
@@ -52,6 +52,7 @@ export function LandingPage() {
   const features = useInView<HTMLElement>();
   const steps = useInView<HTMLElement>();
   const closer = useInView<HTMLElement>();
+  const extensionHref = extensionDownloadHref();
 
   return (
     <div className="landing">
@@ -62,6 +63,9 @@ export function LandingPage() {
         <nav className="landing-nav">
           <a href="#features">Features</a>
           <a href="#how">How it works</a>
+          <a href={extensionHref} download="bugger-extension.zip">
+            Extension
+          </a>
           <a
             href={routeHref("play")}
             onClick={(e) => {
@@ -82,8 +86,11 @@ export function LandingPage() {
             Timestamp-synced tab video, network, console, and clicks — recorded in Chrome, replayed in the browser.
           </p>
           <div className="landing-hero__cta reveal reveal--4">
+            <a className="landing-btn landing-btn--primary" href={extensionHref} download="bugger-extension.zip">
+              Download extension
+            </a>
             <a
-              className="landing-btn landing-btn--primary"
+              className="landing-btn landing-btn--ghost"
               href={routeHref("play")}
               onClick={(e) => {
                 e.preventDefault();
@@ -92,15 +99,10 @@ export function LandingPage() {
             >
               Open replay player
             </a>
-            <a
-              className="landing-btn landing-btn--ghost"
-              href="https://github.com/Arman-Ahmed-Jony/bugger"
-              target="_blank"
-              rel="noreferrer"
-            >
-              View on GitHub
-            </a>
           </div>
+          <p className="landing-hero__hint reveal reveal--4">
+            Unzip, then Load unpacked in <code>chrome://extensions</code> (Developer mode).
+          </p>
         </div>
 
         <div className="landing-hero__visual reveal reveal--5">
@@ -154,25 +156,38 @@ export function LandingPage() {
         ref={closer.ref}
         className={`landing-closer ${closer.inView ? "is-inview" : ""}`}
       >
-        <h2>Load a session. Seek the truth.</h2>
-        <p>Drop a `.bugger` file into the player — no signup, no cloud round-trip.</p>
-        <a
-          className="landing-btn landing-btn--primary"
-          href={routeHref("play")}
-          onClick={(e) => {
-            e.preventDefault();
-            navigate("play");
-          }}
-        >
-          Open replay player
-        </a>
+        <h2>Record it. Replay it.</h2>
+        <p>
+          Download the Chrome extension, capture a session, then drop the `.bugger` file into the player —
+          no signup, no cloud round-trip.
+        </p>
+        <div className="landing-closer__cta">
+          <a className="landing-btn landing-btn--primary" href={extensionHref} download="bugger-extension.zip">
+            Download extension
+          </a>
+          <a
+            className="landing-btn landing-btn--on-dark"
+            href={routeHref("play")}
+            onClick={(e) => {
+              e.preventDefault();
+              navigate("play");
+            }}
+          >
+            Open replay player
+          </a>
+        </div>
       </section>
 
       <footer className="landing-footer">
         <span>Bugger v1</span>
-        <a href="https://github.com/Arman-Ahmed-Jony/bugger" target="_blank" rel="noreferrer">
-          GitHub
-        </a>
+        <div className="landing-footer__links">
+          <a href={extensionHref} download="bugger-extension.zip">
+            Extension zip
+          </a>
+          <a href="https://github.com/Arman-Ahmed-Jony/bugger" target="_blank" rel="noreferrer">
+            GitHub
+          </a>
+        </div>
       </footer>
     </div>
   );

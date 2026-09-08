@@ -39,3 +39,8 @@ export function navigate(route: AppRoute): void {
   window.history.pushState({}, "", href);
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
+
+export function extensionDownloadHref(): string {
+  const base = import.meta.env.BASE_URL || "/";
+  return base.endsWith("/") ? `${base}bugger-extension.zip` : `${base}/bugger-extension.zip`;
+}

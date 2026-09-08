@@ -35,7 +35,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build replay app
+      - name: Build extension and pack download zip
+        run: pnpm build:extension && pnpm pack:extension
+
+      - name: Build site (landing + replay app)
         run: pnpm --filter @bugger/app build
         env:
           BASE_PATH: /bugger/

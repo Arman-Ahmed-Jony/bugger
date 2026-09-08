@@ -1,3 +1,5 @@
 node_modules
 dist
 *.local
+packages/app/public/bugger-extension.zip
+bugger-extension-v*.zip

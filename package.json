@@ -4,8 +4,9 @@
   "scripts": {
     "dev:extension": "pnpm --filter @bugger/extension dev",
     "dev:app": "pnpm --filter @bugger/app dev",
-    "build": "pnpm -r build",
+    "build": "pnpm build:extension && pnpm pack:extension && pnpm --filter @bugger/app build",
     "build:extension": "pnpm --filter @bugger/extension build",
+    "pack:extension": "bash scripts/pack-extension.sh",
     "typecheck": "pnpm -r typecheck"
   },
   "devDependencies": {
