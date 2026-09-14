@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Bugger",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Record tab video, network calls, and console logs with synchronized timestamps.",
-  "permissions": ["debugger", "tabCapture", "activeTab", "storage", "offscreen", "downloads"],
+  "permissions": ["debugger", "tabCapture", "activeTab", "offscreen", "downloads"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "src/background/index.ts",
